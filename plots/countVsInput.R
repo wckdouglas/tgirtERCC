@@ -90,6 +90,7 @@ all <- all %>%
 	transform(name = relevel(name,'Lambowitz lab: TGIRT-seq')) %>%
 	mutate(mole = ifelse(lab=='Lambowitz',mix * 0.5,mix)) %>%
 	mutate(FPKM = count/total / length * 1e9) %>%
+	mutate(lab = paste('Lab',lab)) %>%
 	tbl_df
 
 Rsquared <- ddply(all,c('name','spike'),lm_eqn1) %>%
@@ -136,7 +137,7 @@ p2 <- ggplot(data = all, aes(x=log2(mole),y = log2(count))) +
 figurename = paste(figurepath,'countVsMolecules.pdf',sep='/')
 ggsave(p2,file=figurename,width=20,height = 10)
 
-Rsquared <- ddply(all,c('name','spike'),lm_eqn3) %>%
+Rsquared <- ddply(all,c('lab','spike','prep','name'),lm_eqn3) %>%
 	rename(intercept=V2) %>%
 	rename(slope=V3) %>%
 	rename(R=V1) %>%
@@ -158,6 +159,56 @@ p3 <- ggplot(data = all, aes(x=log2(mole),y = log2(FPKM))) +
 	geom_segment(data=Rsquared,x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
 	geom_segment(data=Rsquared, aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
 figurename = paste(figurepath,'fpkmVsMolecules.pdf',sep='/')
+ggsave(p3,file=figurename,width=20,height = 10)
+
+p3TGIRT <- ggplot(data=all[all$prep=='TGIRT-seq',],aes(x=log2(mole),y = log2(FPKM))) +
+	geom_point(alpha = 0.5) + 
+	facet_grid(spike~lab,scale = 'free_y') +
+	geom_smooth(method='lm',shade=T) +
+	geom_text(data = Rsquared[Rsquared$prep=='TGIRT-seq',],x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
+	theme(legend.position = 'bottom',
+			strip.text = element_text(size = 14,face='bold'),
+			legend.text = element_text(size = 13),
+			legend.title = element_text(size = 13),
+			legend.key.size = unit(10,'mm')) +
+	geom_text(data=Rsquared[Rsquared$prep=='TGIRT-seq',],x=7,y=0,aes(label=paste('LLD = ',signif(2^(xlimit),3)))) +
+	geom_segment(data=Rsquared[Rsquared$prep=='TGIRT-seq',],x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
+	geom_segment(data=Rsquared[Rsquared$prep=='TGIRT-seq',], aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
+p3TruSeq2 <- ggplot(data=all[all$prep=='TruSeq v2',],aes(x=log2(mole),y = log2(FPKM))) +
+	geom_point(alpha = 0.5) + 
+	facet_grid(spike~lab,scale = 'free_y') +
+	geom_smooth(method='lm',shade=T) +
+	geom_text(data = Rsquared[Rsquared$prep=='TruSeq v2',],x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
+	theme(legend.position = 'bottom',
+			strip.text = element_text(size = 14,face='bold'),
+			legend.text = element_text(size = 13),
+			legend.title = element_text(size = 13),
+			legend.key.size = unit(10,'mm')) +
+	geom_text(data=Rsquared[Rsquared$prep=='TruSeq v2',],x=7,y=0,aes(label=paste('LLD = ',signif(2^(xlimit),3)))) +
+	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v2',],x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
+	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v2',], aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
+p3TruSeq3 <- ggplot(data=all[all$prep=='TruSeq v3',],aes(x=log2(mole),y = log2(FPKM))) +
+	geom_point(alpha = 0.5) + 
+	facet_grid(spike~lab,scale = 'free_y') +
+	geom_smooth(method='lm',shade=T) +
+	geom_text(data = Rsquared[Rsquared$prep=='TruSeq v3',],x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
+	theme(legend.position = 'bottom',
+			strip.text = element_text(size = 14,face='bold'),
+			legend.text = element_text(size = 13),
+			legend.title = element_text(size = 13),
+			legend.key.size = unit(10,'mm')) +
+	geom_text(data=Rsquared[Rsquared$prep=='TruSeq v3',],x=7,y=0,aes(label=paste('LLD = ',signif(2^(xlimit),3)))) +
+	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v3',],x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
+	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v3',], aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
+p3 <- cowplot::ggdraw() +
+	cowplot::draw_plot(p3TGIRT,0,0.5,.5,.5) +
+	cowplot::draw_plot(p3TruSeq2,0,0,1,.5) +
+	cowplot::draw_plot(p3TruSeq3,.5,.5,.5,.5) +
+	cowplot::draw_plot_label(c("a", "b", "c"), c(0, 0, 0.5), c(1, 0.5, 1), size = 15)
+figurename = paste(figurepath,'figure2.pdf',sep='/')
 ggsave(p3,file=figurename,width=20,height = 10)
 
 Rsquared <- ddply(all,c('name','spike'),lm_eqn4) %>%

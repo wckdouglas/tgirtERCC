@@ -10,7 +10,7 @@ library(Rcpp)
 library(pheatmap)
 
 sourceCpp('/Users/wckdouglas/cellProject/scripts/Rscripts/string_split.cpp')
-source('/Users/wckdouglas/cellProject/scripts/Rscripts/category.R')
+source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 
 fixFold <- function(fold){
 	ifelse(fold < 1, paste(1,signif(1/fold,3),sep=':'),paste(fold,1,sep=':'))
@@ -62,7 +62,7 @@ scatterDF <- df %>%
 	gather(sample,value,-id,-annotation) %>%
 	mutate(sample = as.character (sample)) %>%
 	mutate(prep = string_split(sample,'_',2,0)) %>%
-	mutate(prep = ifelse(prep=='TruSeq','TruSeq v3',prep)) %>%
+	mutate(prep = ifelse(prep=='TruSeq','TruSeq v3','TGIRT-seq')) %>%
 	mutate(comparison = string_split(sample,'_',3,0)) %>%
 	select(-sample) %>%
 	spread(comparison,value) %>%
@@ -112,7 +112,7 @@ foldScatter <- df %>%
 			gather(sample,value,-id,-conc,-fold,-log2fold,-group) %>%
 			mutate(lab = sapply(sample,getLab)) %>%
 			mutate(prep = sapply(sample,getPrep)) %>%
-			mutate(	name = paste(lab,'lab:',prep)) %>%
+			mutate(name = paste(lab,'lab:',prep)) %>%
 			mutate(group = getGroup(fold)) %>%
 			mutate(error = value - log2fold) %>%
 			filter(!is.na(value))  %>%
@@ -124,7 +124,7 @@ Rsq <- foldScatter %>%
 		group_by(name) %>%
 		summarize(rmse = sqrt(mean(error^2)))
 
-p <- ggplot(data = foldScatter,aes(y=value,x=log2(conc))) +
+foldScatterPlot <- ggplot(data = foldScatter,aes(y=value,x=log2(conc))) +
 		geom_point(aes(color = as.factor(group)),alpha = 0.5) +
 		facet_grid(.~name) +
 		geom_hline(data= hlineDF,aes(yintercept = hlineVal,color = as.factor(group)))  +
@@ -134,8 +134,8 @@ p <- ggplot(data = foldScatter,aes(y=value,x=log2(conc))) +
 			color='Expected log2-fold change:')  +
 		theme(legend.position = 'bottom',
 			strip.text = element_text(size = 10,face='bold'))
-figurename = paste(figurepath,'foldScatter.pdf',sep='/')
-ggsave(p,file = figurename,width = 14, height = 8)
+figurename = str_c(figurepath,'foldScatter.pdf',sep='/')
+ggsave(foldScatterPlot,file = figurename,width = 15, height = 8)
 cat('Plotted:',figurename,'\n')
 
 Rsq <- foldScatter %>%  
@@ -143,7 +143,7 @@ Rsq <- foldScatter %>%
 	do(rsq = summary(lm(value~log2fold,data=.))$r.squared) %>%
 	mutate(rsq = rsq[[1]])	
 
-p <- ggplot(data=foldScatter,aes(x=log2fold,y=value)) + 
+lineScatterFold <- ggplot(data=foldScatter,aes(x=log2fold,y=value)) + 
 	geom_point(aes(color=group)) + 
 	geom_text(data=Rsq,x=0,y=3,aes(label = paste0('R^2 ==',signif(rsq,3))),parse=T)+
 	facet_grid(.~name) +
@@ -151,9 +151,15 @@ p <- ggplot(data=foldScatter,aes(x=log2fold,y=value)) +
 	labs(x='Designed fold change',y='Observed fold change') +
 	theme(legend.position = 'bottom',
 		strip.text = element_text(size = 10,face='bold'))
-figurename = paste(figurepath,'lineScatterFold.pdf',sep='/')
-ggsave(p,file = figurename,width = 14, height = 8)
+figurename = str_c(figurepath,'lineScatterFold.pdf',sep='/')
+ggsave(lineScatterFold,file = figurename,width = 14, height = 8)
 cat('Plotted:',figurename,'\n')
+
+figure3 <- cowplot::plot_grid(scatterplot,foldScatterPlot,labels=c('a','b'))
+figurename <- str_c(figurepath,'/figure3.pdf')
+ggsave(figure3,file = figurename,width = 20, height = 8)
+cat('Plotted:',figurename,'\n')
+
 	
 			
 p <- df %>%
@@ -164,6 +170,6 @@ p <- df %>%
 	geom_segment(aes(y = Lambowitz_TGIRT_AB_log2FoldChange, yend = L_TruSeq_AB_log2FoldChange, x = 'TGIRT', xend = 'TruSeq2'),alpha = 0.2) +
 	labs(y = 'log2 fold change', x= ' ')
 figurename = paste(figurepath,'lineplotFold.pdf',sep='/')
-ggsave(p,file = figurename,width = 9, height = 9)
-cat('Plotted:',figurename,'\n')
+#ggsave(p,file = figurename,width = 9, height = 9)
+#cat('Plotted:',figurename,'\n')
 
