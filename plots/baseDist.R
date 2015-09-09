@@ -22,12 +22,13 @@ df <- datapath %>%
 	mutate(prep = getPrep(sample)) %>%
 	mutate(Type = string_split(type,'_',1,0)) %>%
 	mutate(annotation = paste(lab,'lab:',temp,'-',replicate))  %>%
-	select(annotation,count,Type,prep) 
+	select(annotation,count,Type,prep)  %>%
+	mutate(Type = factor(Type,level=unique(Type)))
 
-p <- ggplot(data=df,aes(x = annotation,y=count * 100,fill=Type)) + 
+p <- ggplot(data=df,aes(x = annotation,y=count * 100,fill=factor(Type,level=rev(unique(Type))))) + 
 	geom_bar(stat='identity',alpha=0.6) +
 	labs(fill = 'Gene Region: ', x = ' ', y = 'Percentage of bases')  +
-	facet_wrap(~prep,scale='free_x') +
+	facet_grid(.~prep,scale='free_x',space='free') +
 	theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
 			strip.text= element_text(size = 13,face = 'bold'),
 			legend.position = 'bottom')

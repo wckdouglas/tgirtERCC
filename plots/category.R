@@ -7,13 +7,9 @@ library(stringr)
 sourceCpp('/Users/wckdouglas/cellProject/scripts/Rscripts/string_split.cpp')
 
 getTemplate <- function(x){
-	if(grepl('ABRF',x)){
-		y = str_split(x,'-')[[1]][4]	
-	}
-	else{
-		y = substr(x,4,4)
-	}
-	return (y)
+	ifelse(grepl('ABRF',x),
+		stri_list2matrix(stri_split_fixed(x,'-'))[4,],
+		substr(x,4,4))
 }
 
 getLab <- function(x){

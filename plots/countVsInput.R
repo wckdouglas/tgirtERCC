@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 
 library(readr)
-library(DESeq)
 library(plyr)
 library(dplyr)
 library(tidyr)
@@ -11,24 +10,6 @@ library(grid)
 
 source('category.R')
 
-lm_eqn1 = function(df){
-    m = lm(log2(count) ~ log2(mix), df);
-	c(summary(m)$r.squared,as.numeric(m$coefficients[1]),as.numeric(m$coefficients[2]))
-}
-
-lm_eqn2 = function(df){
-    m = lm(log2(count) ~ log2(mole), df);
-	c(summary(m)$r.squared,as.numeric(m$coefficients[1]),as.numeric(m$coefficients[2]))
-}
-lm_eqn3 = function(df){
-    m = lm(log2(FPKM) ~ log2(mole), df);
-	c(summary(m)$r.squared,as.numeric(m$coefficients[1]),as.numeric(m$coefficients[2]))
-}
-
-lm_eqn4 = function(df){
-    m = lm(log2(FPKM) ~ log2(mix), df);
-	c(summary(m)$r.squared,as.numeric(m$coefficients[1]),as.numeric(m$coefficients[2]))
-}
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
@@ -50,9 +31,9 @@ ercc <- datapath %>%
 
 
 count <-  df[,-1:-3]%>%
-#	newCountDataSet(.,factor(rep('a',ncol(df)-3))) %>%
-#	estimateSizeFactors() %>%
-#	counts(normalized=T) %>%
+#	DESeq::newCountDataSet(.,factor(rep('a',ncol(df)-3))) %>%
+#	DESeq::estimateSizeFactors() %>%
+#	DESeq::counts(normalized=T) %>%
 	cbind(df[,1:3],.) %>%
 	inner_join(ercc) 
 
@@ -85,25 +66,32 @@ all <- all %>%
 	summarize(total = sum(count)) %>%
 	inner_join(all) %>%
 	mutate(fold = ifelse(fold < 1, paste(1,signif(1/fold,3),sep=':'),paste(fold,1,sep=':'))) %>%
-	mutate(name = paste(lab,'lab:',prep)) %>%
+	mutate(name = paste0(prep,' (',lab,')')) %>%
 	transform(name = as.factor(as.character(name))) %>%
-	transform(name = relevel(name,'Lambowitz lab: TGIRT-seq')) %>%
+	transform(name = relevel(name,'TGIRT-seq (Lambowitz)')) %>%
 	mutate(mole = ifelse(lab=='Lambowitz',mix * 0.5,mix)) %>%
 	mutate(FPKM = count/total / length * 1e9) %>%
 	mutate(lab = paste('Lab',lab)) %>%
 	tbl_df
 
-Rsquared <- ddply(all,c('name','spike'),lm_eqn1) %>%
-	rename(intercept=V2) %>%
-	rename(slope=V3) %>%
-	rename(R=V1)
+Rsquared <- all %>%
+	mutate(mix = log2(mix)) %>%
+	mutate(FPKM = log2(FPKM)) %>%
+	mutate(count = log2(count)) %>%
+	mutate(mole = log2(mole)) %>%
+	group_by(name,spike) %>%
+	do(x = as.numeric(lm(count~mix,data=.)$coefficients[1]),
+	   slope = lm(count~mix,data=.)$coefficients[2],
+	   R = cor(.$count,.$mix,method='pearson')) %>%
+	mutate(x = unlist(x)) %>%
+	mutate(slope = unlist(slope)) %>%
+	mutate(R = unlist(R))
 
-p1 <- ggplot(data = all, aes(x=log2(mix),y = log2(count))) + 
-#	geom_point(aes(color = as.factor(fold)),alpha = 0.5) + 
+countVsInput <- ggplot(data = all, aes(x=log2(mix),y = log2(count))) + 
 	geom_point(alpha = 0.5) + 
 	facet_grid(spike~name,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared,x = 5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	geom_smooth(method='lm',se=F,color='green') +
+	geom_text(data = Rsquared,x = 5, y = 18, aes(label=paste('R ==',signif(R,3))),parse=TRUE) +
 	labs(x= 'log2(concentration)',y = 'log2(mean normalized count)',color = 'mix1-to-mix2 ratio: ')+
 	theme(legend.position = 'bottom',
 			strip.text = element_text(size = 14,face='bold'),
@@ -111,24 +99,28 @@ p1 <- ggplot(data = all, aes(x=log2(mix),y = log2(count))) +
 			legend.title = element_text(size = 13),
 			legend.key.size = unit(10,'mm'))
 figurename = paste(figurepath,'countVsconc.pdf',sep='/')
-ggsave(p1,file=figurename,width=20,height = 10)
+ggsave(countVsInput,file=figurename,width=20,height = 10)
 
-Rsquared <- ddply(all,c('name','spike'),lm_eqn2) %>%
-	rename(intercept=V2) %>%
-	rename(slope=V3) %>%
-	rename(R=V1) %>%
-	mutate(xlimit = 10-intercept/slope)
+Rsquared <- all %>%
+	mutate(mix = log2(mix)) %>%
+	mutate(FPKM = log2(FPKM)) %>%
+	mutate(count = log2(count)) %>%
+	mutate(mole = log2(mole)) %>%
+	group_by(name,spike) %>%
+	do(x = as.numeric(lm(count~mole,data=.)$coefficients[1]),
+	   slope = lm(count~mole,data=.)$coefficients[2],
+	   R = cor(.$count,.$mole,method='pearson')) %>%
+	mutate(x = unlist(x)) %>%
+	mutate(slope = unlist(slope)) %>%
+	mutate(R = unlist(R))
 
 p2 <- ggplot(data = all, aes(x=log2(mole),y = log2(count))) + 
 #	geom_point(aes(color = as.factor(fold)),alpha = 0.5) + 
 	geom_point(alpha = 0.5) + 
 	facet_grid(spike~name,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared,x = 5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	geom_smooth(method='lm',se=F,color='green') +
+	geom_text(data = Rsquared,x = 5, y = 18, aes(label=paste('R ==',signif(R,3))),parse=TRUE) +
 	labs(x= 'log2(attomoles)',y = 'log2(mean normalized count)',color = 'mix1-to-mix2 ratio: ')+
-#	geom_text(data=Rsquared,x=7,y=0,aes(label=paste('count(10) = ',signif(2^(xlimit),3)))) +
-#	geom_segment(data=Rsquared,x=-10,aes(xend=xlimit),y=1,yend=1,color='red') +
-#	geom_segment(data=Rsquared, aes(x=xlimit, xend=xlimit),y=-10,yend=1,color='red') +
 	theme(legend.position = 'bottom',
 			strip.text = element_text(size = 14,face='bold'),
 			legend.text = element_text(size = 13),
@@ -137,18 +129,25 @@ p2 <- ggplot(data = all, aes(x=log2(mole),y = log2(count))) +
 figurename = paste(figurepath,'countVsMolecules.pdf',sep='/')
 ggsave(p2,file=figurename,width=20,height = 10)
 
-Rsquared <- ddply(all,c('lab','spike','prep','name'),lm_eqn3) %>%
-	rename(intercept=V2) %>%
-	rename(slope=V3) %>%
-	rename(R=V1) %>%
-	mutate(xlimit = 0-intercept/slope)
+Rsquared <- all %>%
+	mutate(mix = log2(mix)) %>%
+	mutate(FPKM = log2(FPKM)) %>%
+	mutate(count = log2(count)) %>%
+	mutate(mole = log2(mole)) %>%
+	group_by(name,spike) %>%
+	do(x = as.numeric(lm(FPKM~mole,data=.)$coefficients[1]),
+	   slope = lm(FPKM~mole,data=.)$coefficients[2],
+	   R = cor(.$FPKM,.$mole,method='pearson')) %>%
+	mutate(x = unlist(x)) %>%
+	mutate(slope = unlist(slope)) %>%
+	mutate(R = unlist(R)) %>%
+	mutate(xlimit = (0-x)/slope  )
 
-p3 <- ggplot(data = all, aes(x=log2(mole),y = log2(FPKM))) + 
-#	geom_point(aes(color = as.factor(fold)),alpha = 0.5) + 
+lldm <- ggplot(data = all, aes(x=log2(mole),y = log2(FPKM))) + 
 	geom_point(alpha = 0.5) + 
 	facet_grid(spike~name,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared,x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	geom_smooth(method='lm',se=F,color='green') +
+	geom_text(data = Rsquared,x = -2.5, y = 18, aes(label=paste('R ==',signif(R,3))),parse=TRUE) +
 	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
 	theme(legend.position = 'bottom',
 			strip.text = element_text(size = 14,face='bold'),
@@ -159,69 +158,27 @@ p3 <- ggplot(data = all, aes(x=log2(mole),y = log2(FPKM))) +
 	geom_segment(data=Rsquared,x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
 	geom_segment(data=Rsquared, aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
 figurename = paste(figurepath,'fpkmVsMolecules.pdf',sep='/')
-ggsave(p3,file=figurename,width=20,height = 10)
+ggsave(lldm,file=figurename,width=20,height = 10)
 
-p3TGIRT <- ggplot(data=all[all$prep=='TGIRT-seq',],aes(x=log2(mole),y = log2(FPKM))) +
-	geom_point(alpha = 0.5) + 
-	facet_grid(spike~lab,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared[Rsquared$prep=='TGIRT-seq',],x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
-	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
-	theme(legend.position = 'bottom',
-			strip.text = element_text(size = 14,face='bold'),
-			legend.text = element_text(size = 13),
-			legend.title = element_text(size = 13),
-			legend.key.size = unit(10,'mm')) +
-	geom_text(data=Rsquared[Rsquared$prep=='TGIRT-seq',],x=7,y=0,aes(label=paste('LLD = ',signif(2^(xlimit),3)))) +
-	geom_segment(data=Rsquared[Rsquared$prep=='TGIRT-seq',],x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
-	geom_segment(data=Rsquared[Rsquared$prep=='TGIRT-seq',], aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
-p3TruSeq2 <- ggplot(data=all[all$prep=='TruSeq v2',],aes(x=log2(mole),y = log2(FPKM))) +
-	geom_point(alpha = 0.5) + 
-	facet_grid(spike~lab,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared[Rsquared$prep=='TruSeq v2',],x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
-	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
-	theme(legend.position = 'bottom',
-			strip.text = element_text(size = 14,face='bold'),
-			legend.text = element_text(size = 13),
-			legend.title = element_text(size = 13),
-			legend.key.size = unit(10,'mm')) +
-	geom_text(data=Rsquared[Rsquared$prep=='TruSeq v2',],x=7,y=0,aes(label=paste('LLD = ',signif(2^(xlimit),3)))) +
-	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v2',],x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
-	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v2',], aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
-p3TruSeq3 <- ggplot(data=all[all$prep=='TruSeq v3',],aes(x=log2(mole),y = log2(FPKM))) +
-	geom_point(alpha = 0.5) + 
-	facet_grid(spike~lab,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared[Rsquared$prep=='TruSeq v3',],x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
-	labs(x= 'log2(attomoles)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
-	theme(legend.position = 'bottom',
-			strip.text = element_text(size = 14,face='bold'),
-			legend.text = element_text(size = 13),
-			legend.title = element_text(size = 13),
-			legend.key.size = unit(10,'mm')) +
-	geom_text(data=Rsquared[Rsquared$prep=='TruSeq v3',],x=7,y=0,aes(label=paste('LLD = ',signif(2^(xlimit),3)))) +
-	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v3',],x=-10,aes(xend=xlimit),y=0,yend=0,color='red') +
-	geom_segment(data=Rsquared[Rsquared$prep=='TruSeq v3',], aes(x=xlimit, xend=xlimit),y=-10,yend=0,color='red') 
-p3 <- cowplot::ggdraw() +
-	cowplot::draw_plot(p3TGIRT,0,0.5,.5,.5) +
-	cowplot::draw_plot(p3TruSeq2,0,0,1,.5) +
-	cowplot::draw_plot(p3TruSeq3,.5,.5,.5,.5) +
-	cowplot::draw_plot_label(c("a", "b", "c"), c(0, 0, 0.5), c(1, 0.5, 1), size = 15)
-figurename = paste(figurepath,'figure2.pdf',sep='/')
-ggsave(p3,file=figurename,width=20,height = 10)
-
-Rsquared <- ddply(all,c('name','spike'),lm_eqn4) %>%
-	rename(intercept=V2) %>%
-	rename(slope=V3) %>%
-	rename(R=V1)  
+Rsquared <- all %>%
+	mutate(mix = log2(mix)) %>%
+	mutate(FPKM = log2(FPKM)) %>%
+	mutate(count = log2(count)) %>%
+	mutate(mole = log2(mole)) %>%
+	group_by(name,spike) %>%
+	do(x = as.numeric(lm(FPKM~mix,data=.)$coefficients[1]),
+	   slope = lm(FPKM~mix,data=.)$coefficients[2],
+	   R = cor(.$FPKM,.$mix,method='pearson')) %>%
+	mutate(x = unlist(x)) %>%
+	mutate(slope = unlist(slope)) %>%
+	mutate(R = unlist(R)) 
 
 p4 <- ggplot(data = all, aes(x=log2(mix),y = log2(FPKM))) + 
 #	geom_point(aes(color = as.factor(fold)),alpha = 0.5) + 
 	geom_point(alpha = 0.5) + 
 	facet_grid(spike~name,scale = 'free_y') +
-	geom_smooth(method='lm',shade=T) +
-	geom_text(data = Rsquared,x = -2.5, y = 18, aes(label=paste('R^2 ==',signif(R,3))),parse=TRUE) +
+	geom_smooth(method='lm',se=T) +
+	geom_text(data = Rsquared,x = -2.5, y = 18, aes(label=paste('R ==',signif(R,3))),parse=TRUE) +
 	labs(x= 'log2(concentration)',y = 'log2(mean normalized FPKM)',color = 'mix1-to-mix2 ratio: ')+
 	theme(legend.position = 'bottom',
 			strip.text = element_text(size = 14,face='bold'),
@@ -231,10 +188,6 @@ p4 <- ggplot(data = all, aes(x=log2(mix),y = log2(FPKM))) +
 figurename = paste(figurepath,'fpkmVsConc.pdf',sep='/')
 ggsave(p4,file=figurename,width=20,height = 10)
 
-p = cowplot::plot_grid(p1,p2,p3,p4,labels=c('a','b','c','d'),ncol=1)
+p = cowplot::plot_grid(countVsInput,p2,lldm,p4,labels=c('a','b','c','d'),ncol=1)
 figurename = paste(figurepath,'combinedplot.pdf',sep='/')
 ggsave(p,file = figurename,height = 20,width = 14)
-
-
-
-
