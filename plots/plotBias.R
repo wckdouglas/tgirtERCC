@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-library(data.table)
+library(readr)
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -9,14 +9,16 @@ library(readr)
 
 source('category.R')
 datapath <- '/Users/wckdouglas/cellProject/shortReads/stat/length'
+datapath <- '/Users/wckdouglas/cellProject/result/summary/transcript/stat/length'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 
 files <- list.files(path=datapath,pattern='.length')
 files <- files[!grepl('AH|AS',files)]
+files <- files[!grepl('miR',files)]
 
 readFile <- function(file){
-	df <- fread(paste(datapath,file,sep='/')) %>%
-		setnames(c('pos','percentage')) %>% 
+	df <- read_delim(paste(datapath,file,sep='/'),delim='\t',skip=3,
+					 col_names = c('pos','percentage')) %>% 
 		mutate(sample = str_split(file,'\\.')[[1]][1])
 }
 
@@ -38,6 +40,7 @@ p <- ggplot(data=result,aes(x=annotation,y=pos,fill=percentage)) +
 	facet_grid(.~prep,scale='free_x')
 figurename = paste(figurepath,'biasPlot.pdf',sep='/')
 ggsave(p,file = figurename,width = 10,height = 10)
+message('Saved ',figurename)
 
 df <- result %>%
 	group_by(prep,pos) %>%
@@ -51,6 +54,7 @@ biasPlot <- ggplot(data=df,aes(x=pos,color = prep))+
 	theme(axis.text.x = element_blank())
 figurename = paste(figurepath,'biasPlotLine.pdf',sep='/')
 ggsave(biasPlot,file = figurename,width = 10,height = 10)
+message('Saved ',figurename)
 
 #============================= junctions ========================================
 datapath <- '/Users/wckdouglas/cellProject/result/junction'
@@ -66,6 +70,7 @@ junction <- datapath %>%
 		ylab(expression(Number~of~junctions~"(x"*10^{6}*")"))
 figurename <- str_c(figurepath,'/junctionRegression.pdf')
 ggsave(junction,file=figurename)
+message('Saved ',figurename)
 
 #============== strand ==========================
 
@@ -96,9 +101,11 @@ strandPlot <- ggplot(data = df,aes(x=prep,fill=strand)) +
 
 figurename = paste(figurepath,'strandeness.pdf',sep='/')
 ggsave(strandPlot,file = figurename,width = 12, height = 10)
+message('Saved ',figurename)
 
 p<-plot_grid(biasPlot,junction,strandPlot,labels=c('A','B','C'),ncol=1)
 figurename = str_c(figurepath,'figure4.pdf',sep='/')
 ggsave(p,file = figurename,width = 8, height = 12)
+message('Saved ',figurename)
 
 

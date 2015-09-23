@@ -12,17 +12,17 @@ register(MulticoreParam(22))
 source('category.R')
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
-tablename <- paste0(datapath,'/ercc_deseq_result.tsv')
+tablename <- paste0(datapath,'/deseq_result_all.tsv')
 
 df <- datapath %>%
 	paste('countsData.tsv',sep='/') %>%
 	read_delim(delim='\t')  %>%
-	filter(!grepl('tRNA|snoRNA',type))  %>%
+#	filter(!grepl('tRNA|snoRNA',type))  %>%
 	select(grep('AH|AS',names(.),invert=T)) %>%
 #	gather(sample,count,-id,-type,-name) %>%
 #	mutate(count = ifelse(count<10,0,count)) %>%
 #	spread(sample,count)  %>%
-	filter(grepl('^ERCC',type)) %>%
+#	filter(grepl('^ERCC',type)) %>%
 	tbl_df()
 
 truSeqL <- df[,grepl('-L-',colnames(df))]
@@ -34,7 +34,7 @@ tgirt <- df[,grepl('ref',colnames(df))]
 #set colData
 colData <- data.frame(names = colnames(df[,-1:-3])) %>%
 	mutate(prep = getPrep(names)) %>%
-	mutate(sample = sapply(names,getTemplate)) %>%
+	mutate(sample = getTemplate(names)) %>%
 	mutate(lab = sapply(names,getLab)) %>%
 	mutate(annotation = paste(prep, sample)) %>%
 	mutate(annotation = factor(annotation)) %>%

@@ -10,7 +10,6 @@ library(Rcpp)
 library(pheatmap)
 library(parallel)
 
-sourceCpp('/Users/wckdouglas/cellProject/scripts/Rscripts/string_split.cpp')
 source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 source('countVsInput.R')
 
@@ -18,7 +17,7 @@ fixFold <- function(fold){
 	ifelse(fold < 1, paste(1,signif(1/fold,3),sep=':'),paste(fold,1,sep=':'))
 }
 
-labeling <- function(ab,cd){
+labelingTitration <- function(ab,cd){
 	if((ab > 0 && cd >0) || (ab<0 && cd < 0) || (ab==0 && cd == 0)){
 		   'Consistent order'
 	}else{
@@ -39,8 +38,8 @@ corplot <- df %>%
 	select(grep('log2FoldChange|id',names(.))) %>% 
 	select(grep('CD',names(.),invert=T)) %>%
 	gather(sample,counts,-id) %>%
-	mutate(lab = string_split(as.character(sample),'_',1,0)) %>%
-	mutate(comparison = string_split(as.character(sample),'_',3,0)) %>%
+	mutate(lab = getLab(sample)) %>%
+	mutate(comparison = stri_list2matrix(stri_split_fixed(sample,'_'))[3,]) %>%
 	mutate(name = paste(lab,'lab',comparison,sep='_')) %>%
 	select(name,counts,id) %>%
 	spread(name,counts) %>%
@@ -60,12 +59,12 @@ df1 <- datapath %>%
 	gather(comparison,log2fold,-id,-type,-name) %>%
 	mutate(lab = getLab(comparison)) %>%
 	mutate(prep = getPrep(comparison)) %>%
-	mutate(comparison = string_split(as.character(comparison),'_',3,0)) %>%
+	mutate(comparison = stri_list2matrix(stri_split_fixed(comparison,'_'))[3,]) %>%
 	mutate(log2fold = ifelse(is.na(log2fold),0,log2fold)) %>%
 	spread(comparison,log2fold) %>%
 	filter(AB != 0 , CD!=0) %>%
 	filter(type=='protein_coding') %>%
-	mutate(label = mcmapply(labeling,AB,CD,mc.cores=20)) %>%
+	mutate(label = mcmapply(labelingTitration,AB,CD,mc.cores=20)) %>%
 	tbl_df
 
 titrationPlot <- ggplot(data=df1,aes(x=AB,y=..count..,color=label)) +
@@ -90,18 +89,16 @@ scatterDF <- df %>%
 	mutate(annotation = ifelse(totalCount > cuts[1], 'top 1%', 
 							ifelse(totalCount > cuts[2], 'top 10%',
 									ifelse(totalCount > cuts[3],'top 25%','low 75%')))) %>%
-	mutate(annotation = factor(annotation,levels=rev(c('top 1%','top 10%','top 25%','low 75%')))) %>%
     select(grep('log2|id|annotation',names(.))) %>% 
     select(grep('Lambo|W_|id|annotation',names(.))) %>% 
 	gather(sample,value,-id,-annotation) %>%
-	mutate(sample = as.character (sample)) %>%
-	mutate(prep = string_split(sample,'_',2,0)) %>%
-	mutate(prep = ifelse(prep=='TruSeq','TruSeq v3','TGIRT-seq')) %>%
-	mutate(comparison = string_split(sample,'_',3,0)) %>%
+	mutate(prep = getPrep(sample)) %>%
+	mutate(comparison = stri_list2matrix(stri_split_fixed(sample,'_'))[3,]) %>%
 	select(-sample) %>%
 	spread(comparison,value) %>%
 	mutate(predict = log2((3*2^AB+1)/(3+2^AB))) %>%
 	mutate(error = CD - predict) %>%
+	mutate(annotation = factor(annotation,levels=rev(c('top 1%','top 10%','top 25%','low 75%')))) %>%
 	mutate(alphaValue = ifelse(annotation!='low 75%',1,0.5))
 
 scatterDF[is.na(scatterDF)] <- 0
@@ -119,7 +116,7 @@ scatterplot<- ggplot(data=scatterDF,aes(x=AB,y=CD)) +
 		theme (strip.text = element_text(size = 10,face='bold')) +
 		ylim(-2.2,2.2)  +
 		scale_alpha(guide = 'none')
-figurename = paste(figurepath,'logFoldScatter.pdf',sep='/')
+figurename = paste(figurepath,'logFoldScatter.eps',sep='/')
 ggsave(scatterplot,file = figurename,width=10,height=10)
 cat('Plotted:',figurename,'\n')
 
@@ -132,7 +129,7 @@ hlineDF <- ercc %>%
 		mutate(group = paste('1:',fold)) %>%
 		group_by(group,fold) %>%
 		summarize(hlineVal = unique(log2fold)) %>%
-		mutate(fold = fixFold(fold))
+		mutate(fold = labeling(fold))
 
 df <- datapath %>%
 	paste('ercc_deseq_result.tsv',sep='/') %>%
@@ -149,12 +146,12 @@ foldScatter <- df %>%
 			gather(sample,value,-id,-conc,-fold,-log2fold,-group) %>%
 			mutate(lab = sapply(sample,getLab)) %>%
 			mutate(prep = sapply(sample,getPrep)) %>%
-			mutate(name = str_c(prep,' (',lab,')')) %>%
+			mutate(name = getAnnotation(prep,lab)) %>%
 			mutate(group = paste('1:',fold)) %>%
 			mutate(error = value - log2fold) %>%
 			filter(!is.na(value))  %>%
 			transform(name = as.factor(name)) %>%
-			transform(name = relevel(name,'TGIRT-seq (Lambowitz)')) %>%
+			transform(name = relevel(name,'TGIRT-seq')) %>%
 			tbl_df()
 
 Rsq <- foldScatter %>%
@@ -170,7 +167,7 @@ foldScatterPlot <- ggplot(data = foldScatter,aes(y=value,x=log2(conc))) +
 			y='[Mix1] vs. [Mix2] fold change\n(log2 scale)',
 			color='Expected log2-fold change:')  +
 		theme(legend.position = 'bottom',
-			strip.text = element_text(size = 10,face='bold'))
+			strip.text = element_text(size = 14,face='bold'))
 figurename = str_c(figurepath,'foldScatter.pdf',sep='/')
 ggsave(foldScatterPlot,file = figurename,width = 15, height = 8)
 cat('Plotted:',figurename,'\n')
@@ -181,16 +178,15 @@ cat('Plotted:',figurename,'\n')
 #	draw_plot(scatterplot,0,0,.5,.5) + 
 #	draw_plot(foldScatterPlot,.5,0,.5,1) +
 #	draw_plot_label(c('A','B','C'),c(0,0,.5),c(1,.5,1),size=15)
-figure2 <- plot_grid(lldm + theme_bw() + theme(text=element_blank()),
-					 foldScatterPlot + theme(text=element_blank()),
+figure2 <- plot_grid(lldm + theme(panel.grid.major = element_line(colour = "gray86")),#+ theme(text=element_blank()),
+					 foldScatterPlot + theme(panel.grid.major = element_line(colour = "gray86")),#+ theme(text=element_blank()),
 					 labels=c('A','B'),
 					 ncol=1)
 figurename <- str_c(figurepath,'/figure2.pdf')
 ggsave(figure2,file = figurename,width = 15, height = 10)
 figure3 <- plot_grid(titrationPlot + theme(text = element_blank()),
 					 scatterplot + theme(text = element_blank()),
-					 labels=c('A','B'),
-					 ncol=1,align='v')
+					 labels=c('A','B'))
 figurename <- str_c(figurepath,'/figure3.pdf')
 ggsave(figure3,file = figurename,width = 20, height = 8)
 cat('Plotted:',figurename,'\n')

@@ -66,9 +66,9 @@ all <- all %>%
 	summarize(total = sum(count)) %>%
 	inner_join(all) %>%
 	mutate(fold = ifelse(fold < 1, paste(1,signif(1/fold,3),sep=':'),paste(fold,1,sep=':'))) %>%
-	mutate(name = paste0(prep,' (',lab,')')) %>%
+	mutate(name = getAnnotation(prep,lab)) %>%
 	transform(name = as.factor(as.character(name))) %>%
-	transform(name = relevel(name,'TGIRT-seq (Lambowitz)')) %>%
+	transform(name = relevel(name,'TGIRT-seq')) %>%
 	mutate(mole = ifelse(lab=='Lambowitz',mix * 0.5,mix)) %>%
 	mutate(FPKM = count/total / length * 1e9) %>%
 	mutate(lab = paste('Lab',lab)) %>%

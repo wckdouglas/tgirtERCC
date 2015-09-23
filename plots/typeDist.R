@@ -28,9 +28,10 @@ changeType <- function(type,name){
 		type
 	}
 }
+
 colorscale = brewer.pal(9,"Pastel1")
 geneLevels <- c('Protein coding','lincRNA','Antisense','Pseudogenes','Other ncRNA','Small ncRNA','Mt','ERCC')
-p1 <- datapath %>%
+df1 <- datapath %>%
 	paste('sumTable.tsv',sep='/') %>%
 	read_delim(delim='\t') %>% 
 	select(grep('type|count',names(.))) %>%
@@ -43,20 +44,21 @@ p1 <- datapath %>%
 	mutate(lab = getLab(sample)) %>%
 	mutate(type = ifelse(type %in% c('miRNA','snoRNA','tRNA'),'Other sncRNA',type)) %>%
 	mutate(type = ifelse(grepl('rRNA',type),'rRNA',type)) %>%
-	mutate(name = paste(lab,'lab:',template,replicate))  %>%
+	mutate(name = paste0(template,replicate))  %>%
+	mutate(annotation = getAnnotation(prep,lab))  %>%
 	mutate(type = ifelse(grepl('sncRNA',type),'Small ncRNA',type)) %>%
 	mutate(type = ifelse(grepl('antisense',type),'Antisense',type)) %>%
 	filter(type != 'rRNA') %>% 
-	group_by(name,type,prep) %>%
+	group_by(name,type,prep,annotation) %>%
 	summarize(count = sum(count)) %>% 
 	ungroup() %>%
-	group_by(name,prep) %>%
+	group_by(name,annotation) %>%
 	do(data.frame(count = .$count/sum(.$count),
 				  type = .$type)) %>%
-	mutate(type = factor(type,levels=geneLevels)) %>%
-	ggplot(aes(x = name, y = count*100 , fill = type,order=factor(type,levels=rev(geneLevels)))) +
+	tbl_df
+p1 <- ggplot(data=df1, aes(x = name, y = count*100 , fill = factor(type,levels=geneLevels), order=factor(type,levels=rev(geneLevels)))) +
 		geom_bar(stat='identity') +
-		facet_grid(.~prep,scale = 'free_x',space='free_x') +
+		facet_grid(.~annotation,scale = 'free_x',space='free_x') +
 		theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 1)) +
 		labs(x = ' ', y = 'Percentage of reads',fill='RNA type')+
 		scale_fill_manual(values=colorscale) +
@@ -64,12 +66,8 @@ p1 <- datapath %>%
 figurename = paste(figurepath,'typeRatio.pdf',sep='/')
 ggsave(p1,file=figurename,width=15,height = 10)
 
-samples  <- c(rep('A',3),rep('B',3),rep('C',3),rep('D',3),
-			  rep(c(rep('A',3),rep('B',3)),3),
-			  rep('A',4),rep('B',4),rep('C',4),rep('D',4))
-numbers <- c(rep(1:3,10),rep(1:4,4))
-samples = paste0(samples,numbers)
-colorscale = brewer.pal(10,"Paired")
+colorscale <- c(brewer.pal(9,"Pastel1"),'gray74')
+geneLevelsSmall <- c('tRNA','snoRNA','snRNA','7SK','7SL','miscRNA','Y-RNA','Vault RNA','piRNA','miRNA')
 df <- datapath %>%
 	paste('countsData.tsv',sep='/') %>%
 	read_delim(delim='\t')  %>%
@@ -88,12 +86,13 @@ df <- datapath %>%
 	mutate(replicate = sapply(sample,getReplicate)) %>%
 	mutate(replicate = str_sub(replicate,1,1)) %>%
 	mutate(lab = getLab(sample)) %>%
-	mutate(name = paste(lab,'lab:',template,replicate))  %>%
+	mutate(name = paste0(template,replicate))  %>%
 	mutate(type = str_replace(type,'_','')) %>%
-	mutate(type = factor(type,level=unique(type))) 
-p2 <- ggplot(data=df,aes(x=name,y=percentage, fill = factor(type,level=rev(unique(type))))) +
+	mutate(type = factor(type,level=unique(geneLevelsSmall)))  %>%
+	mutate(annotation = getAnnotation(prep,lab))
+p2 <- ggplot(data=df,aes(x=name,y=percentage, fill = type, order=factor(type,levels=rev(geneLevelsSmall)))) +
 	geom_bar(stat='identity') +
-	facet_grid(.~prep,scale = 'free_x',space='free_x') +
+	facet_grid(.~annotation,scale = 'free_x',space='free_x') +
 	labs(x = ' ', y = 'Percentage of reads',fill='RNA type')+
 	scale_fill_manual(values=colorscale) +
 	theme(strip.text= element_text(size = 13,face = 'bold'),
@@ -104,9 +103,9 @@ ggsave(p2,file=figurename,width=15,height = 10)
 p <- ggdraw()+
 	draw_plot(p1+theme(axis.text.x=element_blank(),
 						axis.ticks.x=element_blank()),
-			  0,0.55,1,0.45) +
-	draw_plot(p2,0,0,0.983,0.55) +
-	draw_plot_label(c('A','B'),c(0,0),c(1,0.6))
+			  0,0.5,1,0.5) +
+	draw_plot(p2,0,0,0.986,0.55) +
+	draw_plot_label(c('A','B'),c(0,0),c(1,0.55))
 figurename = paste(figurepath,'figure6.pdf',sep='/')
 ggsave(p,file=figurename,width=15,height = 10)
 
