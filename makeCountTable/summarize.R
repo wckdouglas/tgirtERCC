@@ -54,7 +54,7 @@ summarizeTable <- function(datapath,countLimit){
             group_by(sample,type) %>%
             summarize(counts = sum(count)) %>%
             ungroup() %>%
-            mutate(sample = paste(sample,'count',sep='_'))%>%
+            mutate(sample = paste('count',sample,sep='_'))%>%
             mutate(counts =  ifelse(counts > countLimit,counts,0)) %>%
             group_by(sample)  %>%
             do(data.frame(counts=.$counts/sum(.$counts),
@@ -69,17 +69,16 @@ summarizeTable <- function(datapath,countLimit){
                 select(-name,-id) %>% 
                 gather(sample,counts,-type) %>%
                 filter(counts > countLimit) %>%
-                mutate(sample = paste(sample,'species',sep='_')) %>%
+                mutate(sample = paste('species',sample,sep='_')) %>%
                 group_by(sample,type) %>%
                 summarize(number_of_species = n()) %>%
                 ungroup() %>%
-                mutate(sample = factor(sample,levels=unique(sample[mixedorder(sample)]))) %>%
                 spread(sample,number_of_species) %>%
                 gather(sample,number_of_species,-type) %>%
                 replace_na(list(number_of_species = 0)) %>%
                 spread(sample,number_of_species) %>%
                 inner_join(sumtable) %>%
                 write.table(resultTable,quote=F,col.names=T,row.names=F,sep='\t')
-    print(paste('written tables:',datapath))
+    message('written tables:',datapath)
 }
 
