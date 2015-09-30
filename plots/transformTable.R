@@ -6,23 +6,32 @@ library(DESeq2)
 library(stringr)
 library(tidyr)
 library(BiocParallel)
-library(data.table)
 register(MulticoreParam(22))
 
-source('category.R')
+source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
+getTemplate <- function(x){
+	if(grepl('ABRF',x)){
+		stri_list2matrix(stri_split_fixed(x,'-'))[4,]
+	}else if(grepl('miRQC',x)){
+		stri_list2matrix(stri_split_fixed(x,'_'))[2,]
+	}else{
+		substr(x,4,4)
+	}
+}
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
-tablename <- paste0(datapath,'/deseq_result_all.tsv')
+tablename <- paste0(datapath,'/deseq_result.tsv')
 
 df <- datapath %>%
-	paste('countsData.tsv',sep='/') %>%
-	read_delim(delim='\t')  %>%
+	paste('countsData.short.tsv',sep='/') %>%
+	read_tsv()  %>%
 #	filter(!grepl('tRNA|snoRNA',type))  %>%
 	select(grep('AH|AS',names(.),invert=T)) %>%
 #	gather(sample,count,-id,-type,-name) %>%
 #	mutate(count = ifelse(count<10,0,count)) %>%
 #	spread(sample,count)  %>%
 #	filter(grepl('^ERCC',type)) %>%
+#	filter(grepl('protein',type)) %>%
 	tbl_df()
 
 truSeqL <- df[,grepl('-L-',colnames(df))]
@@ -34,106 +43,42 @@ tgirt <- df[,grepl('ref',colnames(df))]
 #set colData
 colData <- data.frame(names = colnames(df[,-1:-3])) %>%
 	mutate(prep = getPrep(names)) %>%
-	mutate(sample = getTemplate(names)) %>%
+	mutate(sample = sapply(names,getTemplate)) %>%
 	mutate(lab = sapply(names,getLab)) %>%
 	mutate(annotation = paste(prep, sample)) %>%
 	mutate(annotation = factor(annotation)) %>%
-	mutate(annotation = relevel(annotation,'TruSeq v3 B','TruSeq v3 D','TGIRT-seq B','TGIRT-seq D'))  %>%
 	tbl_df
-rownames(colData) <- colData$names 
 
-# TGIRT data
-TGIRTresultAB <- DESeqDataSetFromMatrix(countData = subset(tgirt,select=grepl('refA|refB',names(tgirt))),
-			colData = subset(colData,grepl('TGIRT-seq A|TGIRT-seq B',annotation)) %>%
-				mutate(annotation=relevel(annotation,'TGIRT-seq B')),
+deseqTable <- function(comparison,df){
+	seqprep <- str_split(comparison,'_')[[1]][1]
+	samples <- str_split(comparison,'_')[[1]][2]
+	seqlab <- str_split(comparison,'_')[[1]][3]
+	sample1 <- str_split(samples,'')[[1]][1]
+	sample2 <- str_split(samples,'')[[1]][2]
+	colDat <- colData %>%
+		filter(prep == seqprep) %>%
+		filter(lab == seqlab) %>%
+		filter(sample %in% c(sample1,sample2))  %>%
+		mutate(annotation = factor(annotation,levels = rev(unique(annotation)))) %>%
+		data.frame()
+	row.names(colDat) <- colDat$names
+	dt <- subset(df,select=which(names(df) %in% colDat$names))
+	DESeqDataSetFromMatrix(countData = dt,
+			colData = colDat,
 			design = ~annotation) %>%
 		DESeq %>%
 		results() %>%
 		data.frame  %>%
 		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('AB',names(.),sep='_')) %>%
+		setNames(paste(comparison,names(.),sep='_')) %>%
+		setNames(stri_replace(names(.),fixed=' ',replacement='-')) %>%
 		tbl_df
+}
 
-TGIRTresultCD <- DESeqDataSetFromMatrix(countData =  subset(tgirt,select=grepl('refC|refD',names(tgirt))),
-			colData = subset(colData,grepl('TGIRT-seq C|TGIRT-seq D',annotation))%>%
-				mutate(annotation=relevel(annotation,'TGIRT-seq D')),
-			design = ~annotation) %>%
-		DESeq %>%
-		results() %>%
-		data.frame  %>%
-		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('CD',names(.),sep='_')) %>%
-		tbl_df
-
-TGIRTresult <- cbind(TGIRTresultAB,TGIRTresultCD) %>%
-		setnames(paste('Lambowitz_TGIRT',names(.),sep='_')) %>%
-		tbl_df
-
-# TruSeq data
-wResultAB <- DESeqDataSetFromMatrix(countData = truSeqW[,grepl('-A-|-B-',names(truSeqW))],
-			colData = subset(colData,grepl('A|B',sample) & lab=='W') %>%
-				mutate(annotation=relevel(annotation,'TruSeq v3 D')),
-			design = ~annotation) %>%
-		DESeq() %>%
-		results() %>%
-		data.frame  %>%
-		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('AB',names(.),sep='_'))
-
-wResultCD <- DESeqDataSetFromMatrix(countData = truSeqW[,grepl('-C-|-D-',names(truSeqW))],
-			colData = subset(colData,grepl('C|D',sample) & lab=='W') %>%
-					mutate(annotation = relevel(annotation,'TruSeq v3 D')),
-			design = ~annotation) %>%
-		DESeq() %>%
-		results() %>%
-		data.frame  %>%
-		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('CD',names(.),sep='_'))
-
-Wresult <- cbind(wResultAB,wResultCD) %>%
-		setnames(paste('W_TruSeq',names(.),sep='_')) 
-
-# TruSeq data
-lResultAB <- DESeqDataSetFromMatrix(countData = truSeqL[,grepl('-A-|-B-',names(truSeqL))],
-			colData = subset(colData,grepl('A|B',sample) & lab=='L') %>%
-				mutate(annotation=relevel(annotation,'TruSeq v2 B')),
-			design = ~annotation) %>%
-		DESeq() %>%
-		results() %>%
-		data.frame  %>%
-		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('L_TruSeq_AB',names(.),sep='_'))
-
-# TruSeq data
-rResultAB <- DESeqDataSetFromMatrix(countData = truSeqR[,grepl('-A-|-B-',names(truSeqR))],
-			colData = subset(colData,grepl('A|B',sample) & lab=='R') %>%
-				mutate(annotation=relevel(annotation,'TruSeq v2 B')),
-			design = ~annotation) %>%
-		DESeq() %>%
-		results() %>%
-		data.frame  %>%
-		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('R_TruSeq_AB',names(.),sep='_'))
-
-# TruSeq data
-vResultAB <- DESeqDataSetFromMatrix(countData = truSeqV[,grepl('-A-|-B-',names(truSeqV))],
-			colData = subset(colData,grepl('A|B',sample) & lab=='V') %>%
-				mutate(annotation=relevel(annotation,'TruSeq v2 B')),
-			design = ~annotation) %>%
-		DESeq() %>%
-		results() %>%
-		data.frame  %>%
-		select(log2FoldChange,padj,baseMean,pvalue) %>%
-		setnames(paste('V_TruSeq_AB',names(.),sep='_'))
-
-data.table(df[,1:3],TGIRTresult,Wresult,lResultAB,rResultAB,vResultAB) %>%
-		write.table(tablename,sep='\t',quote=F,row.names=F,col.names=T)
-cat('Written',tablename,'\n')
-
-
-
-
-
-
-
-
+comparisons <- c('TGIRT-seq_AB_Lambowitz','TGIRT-seq_CD_Lambowitz','TruSeq v3_AB_W','TruSeq v3_CD_W',
+				 'TruSeq v2_AB_L','TruSeq v2_AB_V','TruSeq v2_AB_R')
+lapply(comparisons,deseqTable,df) %>%
+	do.call(cbind,.) %>%
+	cbind(df[,1:3],.) %>%
+	write.table(tablename,sep='\t',quote=F,row.names=F,col.names=T)
+message('Written ',tablename,'\n')

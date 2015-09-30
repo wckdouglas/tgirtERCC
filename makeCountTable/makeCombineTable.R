@@ -12,21 +12,20 @@ countLimit <- 10
 argv <- commandArgs(trailingOnly = FALSE)
 script.dir <- dirname(substring(argv[grep("--file=", argv)], 8))
 source(stri_c(script.dir,'/summarize.R'))
-cat ('Loaded functions!\n')
 
 datapath <- '/scratch/02727/cdw2854/cellProject/smallSeq/mergeBam/countFiles'
 
 #function to merge tRNA count data and the rest counts
 mergeFile <- function(filename){
     sample <- unlist(strsplit(basename(filename),'\\.'))[1]
-    message('Filtering',sample))
+    message('Filtering ',sample)
     dat <-  filename %>%
 			read_delim(delim='\t',col_types = 'cccn',col_names=F) %>%
                 setNames(c('name','type','id','count')) %>%
                 select(id,name,type,count) %>%
                 filter(type != 'tRNA')  %>%
                 select(id,count) 
-    tRNAfile = paste0(datapath,'/',sample,'.tRNA.counts',sep='')
+    tRNAfile = stri_c(datapath,'/',sample,'.tRNA.counts',sep='')
     if (file.info(tRNAfile)$size>0){
         dat <- read_delim(tRNAfile, col_names=F,delim='\t',col_type = 'cn') %>%
                 setNames(c('id','count')) %>%
@@ -34,8 +33,7 @@ mergeFile <- function(filename){
                 select(id,count) %>%
                 rbind(dat)
     }
-    dat <- dat %>%
-            setNames(c('id',sample)) 
+	colnames(dat) <- c('id',sample)
     return(dat)
 }
 

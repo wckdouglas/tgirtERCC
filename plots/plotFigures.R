@@ -28,9 +28,11 @@ datapath <- '/Users/wckdouglas/cellProject/result/countTables'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 
 df <- datapath %>%
-	paste('deseq_result.tsv',sep='/') %>%
-	read_delim(delim='\t')  %>%
-	mutate(totalCount = W_TruSeq_AB_baseMean + W_TruSeq_CD_baseMean )
+	str_c('deseq_result.tsv',sep='/') %>%
+	read_tsv()  %>%
+	mutate(totalCount = `TruSeq-v3_AB_W_baseMean` + `TruSeq-v3_CD_W_baseMean` + 
+						`TGIRT-seq_AB_Lambowitz_baseMean` + 
+						`TGIRT-seq_CD_Lambowitz_baseMean`	)
 df[is.na(df)] <- 0
 
 corplot <- df %>% 
@@ -53,13 +55,13 @@ cat('Plotted:',figurename,'\n')
 #===================================titration =====================
 df1 <- datapath %>%
 	str_c('/deseq_result.tsv') %>%
-	read_delim(delim='\t',col_names=T) %>%
+	read_tsv() %>%
 	select(grep('id|type|name|log2FoldChange',names(.))) %>%
 	select(grep('id|type|name|W|Lambowitz',names(.))) %>%
-	gather(comparison,log2fold,-id,-type,-name) %>%
+	gather(comparison,log2fold,-id:-name) %>%
 	mutate(lab = getLab(comparison)) %>%
 	mutate(prep = getPrep(comparison)) %>%
-	mutate(comparison = stri_list2matrix(stri_split_fixed(comparison,'_'))[3,]) %>%
+	mutate(comparison = stri_list2matrix(stri_split_fixed(comparison,'_'))[2,]) %>%
 	mutate(log2fold = ifelse(is.na(log2fold),0,log2fold)) %>%
 	spread(comparison,log2fold) %>%
 	filter(AB != 0 , CD!=0) %>%
@@ -90,10 +92,10 @@ scatterDF <- df %>%
 							ifelse(totalCount > cuts[2], 'top 10%',
 									ifelse(totalCount > cuts[3],'top 25%','low 75%')))) %>%
     select(grep('log2|id|annotation',names(.))) %>% 
-    select(grep('Lambo|W_|id|annotation',names(.))) %>% 
+    select(grep('_Lambo|_W_|id|annotation',names(.))) %>% 
 	gather(sample,value,-id,-annotation) %>%
 	mutate(prep = getPrep(sample)) %>%
-	mutate(comparison = stri_list2matrix(stri_split_fixed(sample,'_'))[3,]) %>%
+	mutate(comparison = stri_list2matrix(stri_split_fixed(sample,'_'))[2,]) %>%
 	select(-sample) %>%
 	spread(comparison,value) %>%
 	mutate(predict = log2((3*2^AB+1)/(3+2^AB))) %>%
@@ -103,16 +105,17 @@ scatterDF <- df %>%
 
 scatterDF[is.na(scatterDF)] <- 0
 rsquare <- scatterDF %>%
-		group_by(prep) %>%
-		summarize(rs = 1 - sum(error^2)/sum((CD - mean(CD))^2))
+		group_by(prep,annotation) %>%
+		summarize(rs = 1 - sum(error^2)/sum((CD - mean(CD))^2)) %>%
+		mutate(ypos = 1:(nrow(.)/2))
 
-scatterplot<- ggplot(data=scatterDF,aes(x=AB,y=CD)) +
-		geom_point(aes(color = annotation,alpha = alphaValue)) +
+scatterplot<- ggplot(data=scatterDF,aes(x=AB,y=CD,color=annotation)) +
+		geom_point(aes(alpha = alphaValue)) +
 		facet_grid(.~prep)  +
 		geom_line(data=idealCurve,aes(x=log2(a),y=log2(b)),color='black') +
 		labs(x = 'A vs. B fold change (log2 scale)', y = 'C vs. D fold change (log2 scale)') +
-		scale_color_manual(values = rev(c('red','cyan','yellow','gray'))) +
-		geom_text(data = rsquare, x = -5, y = 2.1, aes(label = paste0('R^2==',signif(rs,3))), parse = TRUE) +
+		scale_color_manual(values = rev(c('red','cyan','green','gray'))) +
+		geom_text(data = rsquare, x = -5, aes(y=2.1 -0.2 * ypos,label = paste0('R^2==',signif(rs,3)),color=annotation), parse = TRUE) +
 		theme (strip.text = element_text(size = 10,face='bold')) +
 		ylim(-2.2,2.2)  +
 		scale_alpha(guide = 'none')
@@ -122,8 +125,8 @@ cat('Plotted:',figurename,'\n')
 
 #===================================================================
 ercc <- datapath %>% 
-		paste('ercc_table.tsv',sep='/') %>%
-		read_delim(delim='\t') 
+		str_c('ercc_table.tsv',sep='/') %>%
+		read_tsv()
 
 hlineDF <- ercc %>%
 		mutate(group = paste('1:',fold)) %>%
@@ -132,9 +135,8 @@ hlineDF <- ercc %>%
 		mutate(fold = labeling(fold))
 
 df <- datapath %>%
-	paste('ercc_deseq_result.tsv',sep='/') %>%
-	read_delim(delim='\t')  %>%
-	mutate(totalCount = W_TruSeq_AB_baseMean + W_TruSeq_CD_baseMean )
+	str_c('deseq_result_ercc.tsv',sep='/') %>%
+	read_tsv()  
 
 
 foldScatter <- df %>% 
@@ -184,8 +186,8 @@ figure2 <- plot_grid(lldm + theme(panel.grid.major = element_line(colour = "gray
 					 ncol=1)
 figurename <- str_c(figurepath,'/figure2.pdf')
 ggsave(figure2,file = figurename,width = 15, height = 10)
-figure3 <- plot_grid(titrationPlot + theme(text = element_blank()),
-					 scatterplot + theme(text = element_blank()),
+figure3 <- plot_grid(titrationPlot,# + theme(text = element_blank()),
+					 scatterplot ,#+ theme(text = element_blank()),
 					 labels=c('A','B'))
 figurename <- str_c(figurepath,'/figure3.pdf')
 ggsave(figure3,file = figurename,width = 20, height = 8)
@@ -207,15 +209,3 @@ lineScatterFold <- ggplot(data=foldScatter,aes(x=log2fold,y=value)) +
 figurename = str_c(figurepath,'lineScatterFold.pdf',sep='/')
 ggsave(lineScatterFold,file = figurename,width = 14, height = 8)
 cat('Plotted:',figurename,'\n')
-			
-p <- df %>%
-	select(grep('log2|id',names(.))) %>%
-	select(grep('AB|id',names(.))) %>% 
-	ggplot() + 
-	geom_segment(aes(y = L_TruSeq_AB_log2FoldChange, yend = W_TruSeq_AB_log2FoldChange, x = 'TruSeq2', xend = 'TruSeq3'),alpha = 0.2)  +
-	geom_segment(aes(y = Lambowitz_TGIRT_AB_log2FoldChange, yend = L_TruSeq_AB_log2FoldChange, x = 'TGIRT', xend = 'TruSeq2'),alpha = 0.2) +
-	labs(y = 'log2 fold change', x= ' ')
-figurename = paste(figurepath,'lineplotFold.pdf',sep='/')
-#ggsave(p,file = figurename,width = 9, height = 9)
-#cat('Plotted:',figurename,'\n')
-

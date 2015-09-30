@@ -6,7 +6,6 @@ library(tidyr)
 library(cowplot)
 library(stringr)
 library(data.table)
-library(Rcpp)
 library(RColorBrewer)
 
 source('category.R')
@@ -32,11 +31,12 @@ changeType <- function(type,name){
 colorscale = brewer.pal(9,"Pastel1")
 geneLevels <- c('Protein coding','lincRNA','Antisense','Pseudogenes','Other ncRNA','Small ncRNA','Mt','ERCC')
 df1 <- datapath %>%
-	paste('sumTable.tsv',sep='/') %>%
-	read_delim(delim='\t') %>% 
+	str_c('sumTable.short.tsv',sep='/') %>%
+	read_tsv() %>% 
 	select(grep('type|count',names(.))) %>%
 	select(grep('AS|AH',names(.),invert=T)) %>%
 	gather(sample,count,-type) %>%
+	mutate(sample = stri_list2matrix(stri_split(sample,fixed='_'))[2,]) %>%
 	mutate(prep = getPrep(sample)) %>%
 	mutate(template = sapply(sample,getTemplate)) %>%
 	mutate(replicate = sapply(sample,getReplicate)) %>%
@@ -69,8 +69,8 @@ ggsave(p1,file=figurename,width=15,height = 10)
 colorscale <- c(brewer.pal(9,"Pastel1"),'gray74')
 geneLevelsSmall <- c('tRNA','snoRNA','snRNA','7SK','7SL','miscRNA','Y-RNA','Vault RNA','piRNA','miRNA')
 df <- datapath %>%
-	paste('countsData.tsv',sep='/') %>%
-	read_delim(delim='\t')  %>%
+	str_c('countsData.short.tsv',sep='/') %>%
+	read_tsv()  %>%
 	filter(type %in% smncRNA) %>%
 	mutate(type = mapply(changeType,type,name)) %>%
 	gather(sample,counts,-id,-type,-name) %>%

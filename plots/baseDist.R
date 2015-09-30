@@ -8,7 +8,7 @@ library(stringr)
 library(Rcpp)
 
 source('category.R')
-datapath <- '/Users/wckdouglas/cellProject/result/summary/transcript/stat/summary'
+datapath <- '/Users/wckdouglas/cellProject/result/summary/shortReads/summary'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 
 df <- datapath %>%

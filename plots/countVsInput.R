@@ -10,23 +10,22 @@ library(grid)
 
 source('category.R')
 
-
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 
 df <- datapath %>%
-	paste('countsData.tsv',sep='/') %>%
-	read_delim(delim='\t')  %>%
+	str_c('countsData.short.tsv',sep='/') %>%
+	read_tsv()  %>%
 	filter(!grepl('tRNA|snoRNA',type)) 
 
 ercc_length <- '/Users/wckdouglas/cellProject/result/countTables' %>%
 	str_c('ercc_length.tsv',sep='/') %>%
-	read_delim(delim='\t',col_names=F) 
-colnames(ercc_length) <- c('id','length')
+	read_tsv(col_names=F)  %>%
+	setNames(c('id','length'))
 
 ercc <- datapath %>% 
-	paste('ercc_table.tsv',sep='/') %>%
-	read_delim(delim='\t')  %>%
+	str_c('ercc_table.tsv',sep='/') %>%
+	read_tsv()  %>%
 	inner_join(ercc_length)
 
 

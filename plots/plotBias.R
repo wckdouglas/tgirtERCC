@@ -8,8 +8,8 @@ library(cowplot)
 library(readr)
 
 source('category.R')
-datapath <- '/Users/wckdouglas/cellProject/shortReads/stat/length'
-datapath <- '/Users/wckdouglas/cellProject/result/summary/transcript/stat/length'
+datapath <- '/Users/wckdouglas/cellProject/result/summary/shortReads/length'
+#datapath <- '/Users/wckdouglas/cellProject/result/summary/transcript/stat/length'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 
 files <- list.files(path=datapath,pattern='.length')
@@ -55,6 +55,29 @@ biasPlot <- ggplot(data=df,aes(x=pos,color = prep))+
 figurename = paste(figurepath,'biasPlotLine.pdf',sep='/')
 ggsave(biasPlot,file = figurename,width = 10,height = 10)
 message('Saved ',figurename)
+
+
+newDF <- df %>%
+		mutate(pos = pos + 1) %>%
+	    group_by(prep) %>%
+		do(data.frame(pos = .$pos,
+					 bias = cumsum(.$mean)))
+
+rsqrd <- newDF %>%
+	    group_by(prep) %>%
+		summarize( rsqrd = 1 - sum((pos - bias)^2)/sum((bias - mean(bias))^2)) %>%
+		mutate(ypos = 1:nrow(.))
+
+p <- ggplot() +
+	geom_line(data=newDF,aes(x=pos,y=bias,color=prep),size=2) +
+	geom_abline(slope=1,color='black',size=1.5) +
+	geom_text(data=rsqrd,aes(color=prep,x=25,y=75-4*ypos,label = paste('R^{2} ==',signif(rsqrd,3))),parse=T,size=7) +
+	labs(y = 'Cumulative relative depth (Total = 1)',x = 'relative position',color='Prep') +
+	theme(axis.text.x = element_blank())
+figurename = paste(figurepath,'biasPlotModel.pdf',sep='/')
+ggsave(p,file = figurename,width = 10,height = 10)
+message('Saved ',figurename)
+
 
 #============================= junctions ========================================
 datapath <- '/Users/wckdouglas/cellProject/result/junction'
