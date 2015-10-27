@@ -58,7 +58,7 @@ junctionsPlot <- ggplot(data=df,aes(x=mapped/1e7,y=splits/1e6,color=Prep)) +
 	geom_point() +
 	geom_smooth(method='lm',fullrange=T,aes(fill=Prep)) +
 	geom_text(data=pvals,aes(label=paste0('p-val: ',signif(splitP,3)),color=Prep),
-			  y=c(10,9.5,9),x=6.5,parse=T,show_guide=F) + 
+			  y=c(7,6.5,6),x=6,parse=T,show_guide=F) + 
 	labs(x=expression(Sequencing~depth~"(x"*10^7*")"),
 		 y =expression(Split~reads~"(x"*10^6*")"))
 

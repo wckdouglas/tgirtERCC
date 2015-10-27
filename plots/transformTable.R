@@ -20,10 +20,10 @@ getTemplate <- function(x){
 }
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
-tablename <- paste0(datapath,'/deseq_result.tsv')
+tablename <- paste0(datapath,'/deseq_result.protein.tsv')
 
 df <- datapath %>%
-	paste('countsData.short.tsv',sep='/') %>%
+	paste('countsData.protein.tsv',sep='/') %>%
 	read_tsv()  %>%
 #	filter(!grepl('tRNA|snoRNA',type))  %>%
 	select(grep('AH|AS',names(.),invert=T)) %>%

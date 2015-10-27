@@ -79,11 +79,11 @@ ggsave(titrationPlot,file = figurename,width=10,height=10)
 cat('Plotted:',figurename,'\n')
 
 #================================================================
-idealCurve <- data.frame(size = 1:100000)
-idealCurve$x <- sample(1:100000,nrow(idealCurve))
-idealCurve$y <- sample(1:100000,nrow(idealCurve))
-idealCurve$a <- idealCurve$y/idealCurve$x
-idealCurve$b <- (3*idealCurve$y+idealCurve$x)/(3*idealCurve$x + idealCurve$y)
+#idealCurve <- data.frame(size = 1:100000)
+#idealCurve$x <- sample(1:100000,nrow(idealCurve))
+#idealCurve$y <- sample(1:100000,nrow(idealCurve))
+#idealCurve$a <- idealCurve$y/idealCurve$x
+#idealCurve$b <- (3*idealCurve$y+idealCurve$x)/(3*idealCurve$x + idealCurve$y)
 
 cuts <- quantile(df[df$type=='protein_coding',]$totalCount,c(.99,.9,.75))
 scatterDF <- df %>%
@@ -98,29 +98,48 @@ scatterDF <- df %>%
 	mutate(comparison = stri_list2matrix(stri_split_fixed(sample,'_'))[2,]) %>%
 	select(-sample) %>%
 	spread(comparison,value) %>%
-	mutate(predict = log2((3*2^AB+1)/(3+2^AB))) %>%
+	mutate(x = 2^AB) %>%
+	mutate(y = 2^CD) %>%
+	mutate(adjustedX = x-y) %>%
+	mutate(adjustedY = x*y + 1) %>%
+	group_by(prep) %>%
+	do(data.frame(annotation = .$annotation,
+				  AB = .$AB,
+				  CD= .$CD,
+				  slope = lm(adjustedY~adjustedX+0,data=.)$coefficients['adjustedX'])) %>%
+#	mutate(slope=3) %>%
+	mutate(predict = log2((slope*2^AB+1)/(slope+2^AB))) %>%
 	mutate(error = CD - predict) %>%
 	mutate(annotation = factor(annotation,levels=rev(c('top 1%','top 10%','top 25%','low 75%')))) %>%
 	mutate(alphaValue = ifelse(annotation!='low 75%',1,0.5))
 
 scatterDF[is.na(scatterDF)] <- 0
 rsquare <- scatterDF %>%
-		group_by(prep,annotation) %>%
-		summarize(rs = 1 - sum(error^2)/sum((CD - mean(CD))^2)) %>%
-		mutate(ypos = 1:(nrow(.)/2))
+	group_by(prep) %>%
+#	group_by(prep,annotation) %>%
+	summarize(rs = 1 - sum(error^2)/sum((CD - mean(CD))^2),
+			  slope = unique(slope)) %>%
+	mutate(ypos = 1:(nrow(.)/2))
 
-scatterplot<- ggplot(data=scatterDF,aes(x=AB,y=CD,color=annotation)) +
-		geom_point(aes(alpha = alphaValue)) +
+scatterplot<- ggplot(data=scatterDF,aes(x=AB,y=CD)) +
+		geom_point(aes(alpha = alphaValue,color=annotation)) +
+		geom_line(aes(y=predict),color='black')+
 		facet_grid(.~prep)  +
-		geom_line(data=idealCurve,aes(x=log2(a),y=log2(b)),color='black') +
+#		geom_line(data=idealCurve,aes(x=log2(a),y=log2(b)),color='black') +
 		labs(x = 'A vs. B fold change (log2 scale)', y = 'C vs. D fold change (log2 scale)') +
 		scale_color_manual(values = rev(c('red','cyan','green','gray'))) +
-		geom_text(data = rsquare, x = -5, aes(y=2.1 -0.2 * ypos,label = paste0('R^2==',signif(rs,3)),color=annotation), parse = TRUE) +
+#		geom_text(data = rsquare, x = -5, aes(y=2.1 -0.2 * ypos,label = paste0('R^2==',signif(rs,3)),color=annotation), parse = TRUE) +
+		geom_text(data = rsquare, x = -5, aes(y=2.1, label = paste0('R^2==',signif(rs,3))), parse = TRUE) +
 		theme (strip.text = element_text(size = 10,face='bold')) +
 		ylim(-2.2,2.2)  +
 		scale_alpha(guide = 'none')
-figurename = paste(figurepath,'logFoldScatter.eps',sep='/')
+figurename = paste(figurepath,'logFoldScatter.pdf',sep='/')
 ggsave(scatterplot,file = figurename,width=10,height=10)
+cat('Plotted:',figurename,'\n')
+
+p <- plot_grid(titrationPlot,scatterplot,labels=c('A','B'),ncol=1)
+figurename = str_c(figurepath,'figure4.pdf',sep='/')
+ggsave(p,file=figurename,height=10)
 cat('Plotted:',figurename,'\n')
 
 #===================================================================

@@ -43,7 +43,7 @@ moreType <- function(name,type){
 	if (grepl('VTRNA',name)) {
 		'VaultRNA'
 	}
-	else if (grepl('RNY',name)){
+	else if (grepl('Y_RNA|RNY',name)){
 		'Y-RNA'
 	}
 	else{
@@ -52,7 +52,6 @@ moreType <- function(name,type){
 }
 
 plotOne <- function(temp,df){
-	number <- 300
 	dfp <- df %>%
 		filter(template==temp) %>%
 		group_by(id,type,name,prep,template) %>%
@@ -65,18 +64,19 @@ plotOne <- function(temp,df){
 		   name = .$name, 
 		   type = .$type,
 		   id = .$id)) %>%
-		top_n(n=number,wt=counts)%>%
+	#	top_n(n=number,wt=counts)%>%
 	#	top_n(n=100,wt=counts)%>%
+		arrange(desc(counts)) %>%
 		mutate(id = reorder(id,-counts)) %>%
 		tbl_df()   
-	
+
 	p1 <- ggplot(data=dfp,aes(y=counts,x=id)) +
 	   labs(x = ' ', y = 'Relatvie counts') +
 	   geom_bar(stat='identity',width=1,position='dodge')+	
 	   theme(strip.text.x = element_text(size = 15),
 			 legend.position = 'none')+
 	   labs(x = ' ', y = ' ') +
-	   scale_x_discrete(breaks=levels(dfp$id)[seq(1,number,number/3)],labels=seq(1,number,number/3))
+	   scale_x_discrete(breaks=dfp$id[c(1,length(dfp$id))],labels=c(1,length(dfp$id)))
 	
 	df1 <- dfp %>%
 		group_by(type) %>%
@@ -93,23 +93,26 @@ plotOne <- function(temp,df){
 	   labs(x = ' ', y = 'Relatvie counts') 
 	
 	type = unique(df1$type)
-	if (type %in% c('VaultRNA','Y-RNA')){
+	if (type %in% c('VaultRNA')){
 		p <- p2
 	}else{
 		p <- ggdraw() +
 			draw_plot(p2,0,0,1,1) +
-			draw_plot(p1,0.4,0.55,0.5,0.35)
+			draw_plot(p1,0.4,0.50,0.5,0.4)
 	}
 	return(p)
 }
 
 plotType <- function(pattern,df){
 	dfT <- df %>%
-		filter(grepl(pattern,type)) %>%
+		filter(type==pattern) %>%
 		gather(samplename,counts,-c(type,id,name)) %>%
 		mutate(prep = getPrep(samplename)) %>%
 		filter(prep == 'TGIRT-seq') %>%
-		mutate(template = getTemplate(samplename)) 
+		mutate(template = getTemplate(samplename))  %>%
+		mutate(RNAtemp = pattern) %>%
+		mutate(name = ifelse(RNAtemp=='Y-RNA',id,name)) %>%
+		select(-RNAtemp)
 	
 	pType <- lapply(c('A','B'),plotOne,dfT)
 	p <- plot_grid(plotlist=pType)
@@ -121,7 +124,7 @@ datapath = '/Users/wckdouglas/cellProject/result/countTables'
 figurepath = '/Users/wckdouglas/cellProject/figures' 
 source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 df <- datapath %>%
-	str_c("countsData.short.tsv",sep='/') %>%
+	str_c("countsData.75.tsv",sep='/') %>%
 	read_delim(delim='\t') %>%
 	mutate(type = sapply(type,changeType)) %>%
 	mutate(type = unlist(mcmapply(moreType,name,type,mc.cores=20)))
