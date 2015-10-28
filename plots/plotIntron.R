@@ -6,12 +6,11 @@ library(stringr)
 library(tidyr)
 library(cowplot)
 library(parallel)
+library(tgirtABRF)
 
 datapath <- '/Users/wckdouglas/cellProject/result/intronTable'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 filelist <- list.files(path = datapath , pattern = '.csv')
-
-source('category.R')
 
 df <- datapath %>%
 	str_c('/introns_distance.csv') %>%

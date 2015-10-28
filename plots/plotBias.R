@@ -3,11 +3,12 @@
 library(readr)
 library(dplyr)
 library(tidyr)
+library(stringi)
 library(stringr)
 library(cowplot)
 library(readr)
+library(tgirtABRF)
 
-source('category.R')
 datapath <- '/Users/wckdouglas/cellProject/result/summary/shortReads/length'
 #datapath <- '/Users/wckdouglas/cellProject/result/summary/transcript/stat/length'
 figurepath <- '/Users/wckdouglas/cellProject/figures'

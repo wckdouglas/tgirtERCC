@@ -9,8 +9,8 @@ library(cowplot)
 library(Rcpp)
 library(pheatmap)
 library(parallel)
+library(tgirtABRF)
 
-source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 source('countVsInput.R')
 
 fixFold <- function(fold){

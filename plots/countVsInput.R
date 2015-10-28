@@ -7,8 +7,7 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 library(grid)
-
-source('category.R')
+library(tgirtABRF)
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
 figurepath <- '/Users/wckdouglas/cellProject/figures'

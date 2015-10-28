@@ -6,8 +6,9 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(Rcpp)
+library(stringi)
+library(tgirtABRF)
 
-source('category.R')
 datapath <- '/Users/wckdouglas/cellProject/result/summary/shortReads/summary'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 
