@@ -5,8 +5,9 @@ library(readr)
 library(tidyr)
 library(pheatmap)
 library(cowplot)
+library(stringi)
+library(tgirtABRF)
 
-source('category.R')
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
 df <- datapath %>%
 	stri_c('/countsData.short.tsv') %>%

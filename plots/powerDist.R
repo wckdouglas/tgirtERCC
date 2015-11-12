@@ -6,6 +6,7 @@ library(tidyr)
 library(stringr)
 library(cowplot)
 library(parallel)
+library(tgirtABRF)
 
 #======set up change type funciton
 ncRNA=c("sense_intronic","3prime_overlapping_ncrna",'processed_transcript',
@@ -122,7 +123,6 @@ plotType <- function(pattern,df){
 #====================================================================
 datapath = '/Users/wckdouglas/cellProject/result/countTables'
 figurepath = '/Users/wckdouglas/cellProject/figures' 
-source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 df <- datapath %>%
 	str_c("countsData.75.tsv",sep='/') %>%
 	read_delim(delim='\t') %>%

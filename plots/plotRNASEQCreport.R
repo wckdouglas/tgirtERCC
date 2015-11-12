@@ -3,8 +3,9 @@ library(rvest)
 library(dplyr)
 library(tidyr)
 library(cowplot)
+library(stringr)
+library(tgirtABRF)
 
-source('category.R')
 datapath <- '/Users/wckdouglas/cellProject/result/rnaseqQC'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 #datapath <- '/Users/wckdouglas/cellProject/result/rnaseqQC/downsampledNonTrimmed'

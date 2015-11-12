@@ -6,9 +6,10 @@ library(DESeq2)
 library(stringr)
 library(tidyr)
 library(BiocParallel)
-register(MulticoreParam(22))
+library(tgirtABRF)
+library(stringi)
+register(MulticoreParam(12))
 
-source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 getTemplate <- function(x){
 	if(grepl('ABRF',x)){
 		stri_list2matrix(stri_split_fixed(x,'-'))[4,]
@@ -66,7 +67,7 @@ deseqTable <- function(comparison,df){
 	DESeqDataSetFromMatrix(countData = dt,
 			colData = colDat,
 			design = ~annotation) %>%
-		DESeq %>%
+		DESeq() %>%
 		results() %>%
 		data.frame  %>%
 		select(log2FoldChange,padj,baseMean,pvalue) %>%

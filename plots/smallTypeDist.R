@@ -5,10 +5,11 @@ library(dplyr)
 library(tidyr)
 library(cowplot)
 library(stringr)
+library(stringi)
 library(data.table)
 library(RColorBrewer)
+library(tgirtABRF)
 
-source('category.R')
 smncRNA=c('misc_RNA','snRNA','snoRNA','piRNA','miRNA','tRNA')
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
@@ -29,7 +30,7 @@ changeType <- function(type,name){
 colorscale = brewer.pal(9,"Paired")
 
 df <- datapath %>%
-	paste('countsData.tsv',sep='/') %>%
+	str_c('countsData.75.tsv',sep='/') %>%
 	read_delim(delim='\t')  %>%
 	filter(type %in% smncRNA) %>%
 	mutate(type = mapply(changeType,type,name)) %>%

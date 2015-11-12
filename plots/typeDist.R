@@ -5,10 +5,11 @@ library(dplyr)
 library(tidyr)
 library(cowplot)
 library(stringr)
+library(stringi)
 library(data.table)
 library(RColorBrewer)
+library(tgirtABRF)
 
-source('category.R')
 
 datapath <- '/Users/wckdouglas/cellProject/result/countTables'
 figurepath <- '/Users/wckdouglas/cellProject/figures'

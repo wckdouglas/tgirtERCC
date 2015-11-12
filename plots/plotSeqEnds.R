@@ -6,8 +6,8 @@ library(tidyr)
 library(stringr)
 library(cowplot)
 library(parallel)
+library(tgirtABRF)
 
-source('/Users/wckdouglas/cellProject/scripts/tgirtERCC/plots/category.R')
 
 datapath <- '/Users/wckdouglas/cellProject/result/seqBias'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
@@ -56,10 +56,11 @@ changeLabel <-function(orientation){
 
 df <- mclapply(baseFiles,tidyTable,datapath,mc.cores=20) %>%
 	do.call(rbind,.) %>%
-	group_by(name,bp,base,orientation,prep,lab) %>%
+	group_by(bp,base,orientation,prep) %>%
 	summarize(count = sum(count)) %>%
 	ungroup() %>%
-	group_by(name,bp,orientation,prep,lab) %>%
+	mutate(count = as.numeric(count)) %>%
+	group_by(bp,orientation,prep) %>%
 	do(data.frame(fraction = .$count/sum(.$count),
 					base = .$base)) %>%
 	ungroup() %>%
@@ -67,8 +68,8 @@ df <- mclapply(baseFiles,tidyTable,datapath,mc.cores=20) %>%
 	mutate(base = unlist(mcmapply(reverseTranscribe,base,orientation,mc.cores=20))) %>%
 	mutate(orientation = unlist(mclapply(orientation,changeLabel,mc.cores=20))) %>%
 	mutate(base = factor(base,level = c('T','C','A','G')))  %>%
-	mutate(annotation = getAnnotation(prep,lab)) %>%
-	tbl_df
+#	mutate(annotation = getAnnotation(prep,lab)) %>%
+	tbl_df 
 
 plotseq <- function(prep,df){
 	p <- ggplot(data=df[df$prep==prep,],aes(x=bp,y=fraction,color=base)) +
@@ -91,7 +92,7 @@ plotseq <- function(prep,df){
 
 p <- ggplot(data=df,aes(x=bp,y=fraction,color=base)) +
 		geom_line() +
-		facet_grid(annotation~orientation,scale='free',space='free') +
+		facet_grid(prep~orientation,scale='free',space='free') +
 		scale_x_continuous(breaks=-max(df$bp):max(df$bp)) +
 		ylim(0,0.9)+
 		labs(x = "5'  -------------->   3'",color=' ',y='Fraction')+
@@ -99,10 +100,8 @@ p <- ggplot(data=df,aes(x=bp,y=fraction,color=base)) +
 			  strip.text = element_text(size = 15,face='bold'),
 			  legend.position='bottom') +
 		scale_color_manual(values=c('red','blue','green','black'))
-
-
 figurename = paste(figurepath,'seqEnds.pdf',sep='/')
-ggsave(p,file = figurename,width = 10, height = 12)
+ggsave(p,file = figurename,width = 10, height = 8)
 cat('Plotted:',figurename,'\n')
 
 

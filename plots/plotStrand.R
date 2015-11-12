@@ -3,10 +3,11 @@
 library(readr)
 library(dplyr)
 library(stringr)
+library(stringi)
 library(ggplot2)
 library(tidyr)
+library(tgirtABRF)
 
-source('category.R')
 datapath <- '/Users/wckdouglas/cellProject/result/summary/transcript/stat/strand'
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 

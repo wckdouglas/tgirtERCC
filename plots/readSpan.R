@@ -5,6 +5,7 @@ library(dplyr)
 library(readr)
 library(stringr)
 library(cowplot)
+library(tgirtABRF)
 
 getMaxima <- function(x){
 	d <- density(x)
@@ -12,7 +13,6 @@ getMaxima <- function(x){
 	return(list(y = d$y[i],x = d$x[i]))
 }
 
-source('/Users/wckdouglas/cellProject/scripts/Rscripts/category.R')
 datapath <- '/Users/wckdouglas/cellProject/result/readSpan' 
 figurepath <- '/Users/wckdouglas/cellProject/figures'
 df <- datapath %>%
