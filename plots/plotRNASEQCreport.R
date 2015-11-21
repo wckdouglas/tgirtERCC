@@ -73,6 +73,13 @@ strand <- df %>%
 	mutate(strand = ifelse(as.character(strand)=='antisense','Antisense of gene','Gene direction'))  %>%
 	mutate(strand = factor(strand,levels=c('Gene direction','Antisense of gene')))
 
+tgirt <- strand %>% 
+	filter(Prep=='TGIRT-seq',strand == 'Antisense of gene')
+truseq3 <- strand %>%
+	filter(Prep=='TruSeq v3',strand == 'Antisense of gene')
+p <- t.test(tgirt$rate,truseq3$rate,alternative='less')$p.value
+message('Stranded p value = ',p)
+
 strandPlot <- strand %>%
 	group_by(Prep,strand) %>%
 	summarize(mean = mean(rate),
