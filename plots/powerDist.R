@@ -129,8 +129,22 @@ df <- datapath %>%
 	mutate(type = sapply(type,changeType)) %>%
 	mutate(type = unlist(mcmapply(moreType,name,type,mc.cores=20)))
 
+dfTRNA <- df %>% 
+	filter(type=='tRNA') %>% 
+	mutate(name = str_sub(name,1,7))  %>%
+	mutate(id = name)
+
+df <- df %>%
+	filter(type!='tRNA') %>%
+	rbind(dfTRNA,.) %>%
+	tbl_df
+
 typeList <- c('tRNA','snoRNA','snRNA','miRNA','Y-RNA','VaultRNA')
 ps <- lapply(typeList,plotType,df)
+
+figurename <- str_c(figurepath, '/tRNAcountDistribution.pdf')
+ggsave(ps[[1]],file=figurename,width=10)
+message(str_c('saved',figurename,sep=' '))
 p<-plot_grid(plotlist=ps,ncol=1,labels=paste(c('A','B','C','D'),typeList,sep='. '))
 
 figurename <- str_c(figurepath, '/countDistribution.pdf')

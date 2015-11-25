@@ -5,6 +5,7 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(stringr)
+library(stringi)
 library(cowplot)
 library(Rcpp)
 library(pheatmap)
@@ -175,9 +176,18 @@ foldScatter <- df %>%
 			transform(name = relevel(name,'TGIRT-seq')) %>%
 			tbl_df()
 
+negTest <- data_frame(id = unique(foldScatter$id),
+					  value = sample(foldScatter$value,92),
+					  log2fold = sample(foldScatter$log2fold,92)) %>%
+			mutate(error = value-log2fold) %>%
+			mutate(name = 'negTest') %>%
+			select(name,error)
+
 Rsq <- foldScatter %>%
-		group_by(name) %>%
-		summarize(rmse = sqrt(mean(error^2)))
+	select(name,error) %>%
+	rbind(negTest) %>%
+	group_by(name) %>%
+	summarize(rmse = sqrt(mean(error^2)))
 
 foldScatterPlot <- ggplot(data = foldScatter,aes(y=value,x=log2(conc))) +
 		geom_point(aes(color = as.factor(group))) +

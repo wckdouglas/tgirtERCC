@@ -125,9 +125,8 @@ labelsKnown <- c('< 0.0001%',
 			 '0.001 - 0.01%',
 			 '0.01 - 0.1%',
 			 '0.1 - 1% ',
-			 '1 - 50%',
-			 '50 - 70%',
-			 '70 - 90%',
+			 '1 - 10%',
+			 '10 - 90%',
 			 '> 90%')
 labelKnown <- function(count) {
 	ifelse(count < 1e-4,labelsKnown[1],
@@ -135,22 +134,21 @@ labelKnown <- function(count) {
 				 ifelse(count < 1e-2, labelsKnown[3],
 						ifelse(count < 0.1, labelsKnown[4],
 								ifelse(count < 1, labelsKnown[5],
-									   ifelse(count < 50, labelsKnown[6], 
-											ifelse(count < 70, labelsKnown[7], 
-											  ifelse(count < 90,labelsKnown[8],labelsKnown[9]))))))))
+									   ifelse(count < 10, labelsKnown[6], 
+											  ifelse(count < 90,labelsKnown[7],labelsKnown[8])))))))
 }
 	
 labelsNovel <- c('< 0.01%',
 			 '0.01 - 0.1%',
 			 '0.1 - 1% ',
-			 '1 - 50%',
-			 '50 - 70%',
+			 '1 - 30%',
+			 '30 - 70%',
 			 '> 70%')
 labelNovel <- function(count) {
 		   ifelse(count < 1e-2 , labelsNovel[1],
 						ifelse(count < 0.1, labelsNovel[2],
 								ifelse(count < 1, labelsNovel[3],
-									   ifelse(count < 50, labelsNovel[4], 
+									   ifelse(count < 30, labelsNovel[4], 
 											ifelse(count < 70, labelsNovel[5],labelsNovel[6])))))
 }
 
@@ -214,11 +212,11 @@ plotFigure <- function(typeJunction,dt,templateRNA){
 		geom_tile() +
 #		geom_text(aes(label=rawCount),size=1.2) + 
 #		scale_fill_gradient(low='yellow',high='red') +
-		scale_fill_manual(values=colors) +
+		scale_fill_manual(values=colors,drop=FALSE) +
 		facet_grid(type~annotation) +
 		theme(text=element_text(color='black',face='bold',size=20)) +
 		theme(axis.text.x = element_text(angle=90,hjust=1,vjust=0.5)) +
-		labs(fill=' ')
+		labs(fill=' ') 
 }
 
 plotFigureType <- function(template,dt){

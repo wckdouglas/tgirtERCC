@@ -27,8 +27,8 @@ df <- html[[5]] %>%
 df <- html[[4]] %>%
 	html_table %>%
 	select(Sample,`Transcripts Detected`,`Split Reads`) %>%
-	inner_join(df) 
-colnames(df) <- c('sample','transcripts','splits','sense','antisense','mapped') 
+	inner_join(df)  %>%
+	setNames(c('sample','transcripts','splits','sense','antisense','mapped'))
 
 df <- df %>%
 	mutate(Prep=getPrep(sample)) %>%
@@ -37,6 +37,8 @@ df <- df %>%
 	transform(splits = as.numeric(str_replace_all(splits,',','')))  %>%
 	transform(sense = as.numeric(str_replace_all(sense,',','')))  %>%
 	transform(antisense = as.numeric(str_replace_all(antisense,',','')))  %>%
+	transform(transcriptSlope = transcripts/mapped) %>%
+	transform(junctionSlope = splits/mapped) %>%
 	tbl_df
 
 pvals <- df %>%
@@ -45,6 +47,10 @@ pvals <- df %>%
 	   transcriptP = summary(lm(transcripts~mapped,data=.))$coefficients[8]) %>%
 	transform(splitP = unlist(splitP)) %>%
 	transform(transcriptP = unlist(transcriptP)) 
+
+transcriptsANOVA=  aov(transcriptSlope~Prep,data=subset(df,Prep!='TruSeq v2'))
+junctionANOVA =  aov(junctionSlope~Prep,data=subset(df,Prep!='TruSeq v2'))
+
 
 transcriptPlot <- ggplot(data=df,aes(x=mapped/1e7,y=transcripts/1e4,color=Prep)) +
 	geom_point() +
