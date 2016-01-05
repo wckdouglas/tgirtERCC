@@ -17,11 +17,10 @@ import getopt
 trimmomaticPath = '/work/02727/cdw2854/src/trimmomatic/classes' #trimmomatoc 0.32
 samtoolsPath = '/work/02727/cdw2854/src/samtools-0.1.2/bin' # samtools 0.1.2
 bowtiePath = '/opt/apps/bowtie/2.1.0' # bowtie 2.1.0
-tophatPath='/work/02727/cdw2854/src/tophat-2.0.13.Linux_x86_64' #  tophat version 2
 hisatPath = '/work/02727/cdw2854/src/hisat'
-bedtoolsPath = '/work/02727/cdw2854/src/bedtools2/bin'  #https://github.com/wckdouglas/bedtools2
+bedtoolsPath = '/work/02727/cdw2854/src/bedtools2/bin'  # https://github.com/wckdouglas/bedtools2
 fastqToolsPath = '/work/02727/cdw2854/src/fastq-tools/bin' # https://github.com/wckdouglas/fastq-tools
-bedFileToolsPath = '/work/02727/cdw2854/src/bedFileTools/bin'
+bedFileToolsPath = '/work/02727/cdw2854/src/bedFileTools/bin' # https://github.com/wckdouglas/bedFileTools
 
 def makeFolder(folder):
     """ 
