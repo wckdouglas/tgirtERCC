@@ -2,17 +2,6 @@
 
 import glob
 
-#datapath = '/corral-repl/utexas/2013lambowitz/Data/*_sherif' 
-#resultpath = '/scratch/02727/cdw2854/sherif_project'
-#datapath = '/scratch/02727/cdw2854/cellProject/data'
-#resultpath = '/scratch/02727/cdw2854/cellProject'
-#humanIndex = '/scratch/02727/cdw2854/human_genome/GRCh38/genome_rDNA.fa'
-#genesBed = '/scratch/02727/cdw2854/human_genome/bedFiles/genes.bed'
-#spliceFile = '/scratch/02727/cdw2854/human_genome/GRCh38/splicesites.txt'
-#tRNAbed = '/scratch/02727/cdw2854/human_genome/tRNA/tRNA_Mt_tRNA.bed'
-#tRNA_index = '/scratch/02727/cdw2854/human_genome/tRNA/tRNA'
-
-
 datapath = '/scratch/02727/cdw2854/cellProject/data'
 resultpath = '/scratch/02727/cdw2854/cellProject'
 humanIndex = '/corral-repl/utexas/2013lambowitz/Ref/RNASeqConsortium/reference.fasta' # GRCh38 bowtie2 index 
