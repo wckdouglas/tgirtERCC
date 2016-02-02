@@ -56,8 +56,11 @@ df1 <- datapath %>%
 	group_by(name,annotation) %>%
 	do(data.frame(count = .$count/sum(.$count),
 				  type = .$type)) %>%
+	mutate(type = factor(type,levels=rev(geneLevels))) %>%
+	arrange(type) %>%
 	tbl_df
-p1 <- ggplot(data=df1, aes(x = name, y = count*100 , fill = factor(type,levels=geneLevels), order=factor(type,levels=rev(geneLevels)))) +
+p1 <- ggplot(data=df1, aes(x = name, y = count*100 , fill = factor(type,levels=geneLevels)))+#, 
+#						   order=factor(type,levels=rev(geneLevels)))) +
 		geom_bar(stat='identity') +
 		facet_grid(.~annotation,scale = 'free_x',space='free_x') +
 		theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 1)) +
@@ -67,7 +70,8 @@ p1 <- ggplot(data=df1, aes(x = name, y = count*100 , fill = factor(type,levels=g
 figurename = paste(figurepath,'typeRatio.pdf',sep='/')
 ggsave(p1,file=figurename,width=15,height = 10)
 
-colorscale <- c(brewer.pal(9,"Pastel1"),'gray74')
+pastel <- c(brewer.pal(9,"Pastel1"),'gray74')
+colorscale <- c('darkorange', pastel[c(6, 4, 3, 2, 1, 7,8)],'lightskyblue3' , pastel[10])
 geneLevelsSmall <- c('tRNA','snoRNA','snRNA','7SK','7SL','miscRNA','Y-RNA','Vault RNA','piRNA','miRNA')
 df <- datapath %>%
 	str_c('countsData.short.tsv',sep='/') %>%
@@ -90,16 +94,19 @@ df <- datapath %>%
 	mutate(name = paste0(template,replicate))  %>%
 	mutate(type = str_replace(type,'_','')) %>%
 	mutate(type = factor(type,level=unique(geneLevelsSmall)))  %>%
-	mutate(annotation = getAnnotation(prep,lab))
-p2 <- ggplot(data=df,aes(x=name,y=percentage, fill = type, order=factor(type,levels=rev(geneLevelsSmall)))) +
+	mutate(annotation = getAnnotation(prep,lab)) %>%
+	mutate(type = factor(type,levels=rev(geneLevelsSmall))) %>%
+	arrange(type) 
+p2 <- ggplot(data=df,aes(x=name,y=percentage, fill = factor(type,levels=geneLevelsSmall))) +
 	geom_bar(stat='identity') +
 	facet_grid(.~annotation,scale = 'free_x',space='free_x') +
 	labs(x = ' ', y = 'Percentage of reads',fill='RNA type')+
 	scale_fill_manual(values=colorscale) +
-	theme(strip.text= element_text(size = 13,face = 'bold'),
-			axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) 
+	theme(strip.text= element_text(size = 13,face = 'bold')) +
+	theme(text = element_text(face='bold')) +
+	theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) 
 figurename = paste(figurepath,'smallTypeRatio.pdf',sep='/')
-ggsave(p2,file=figurename,width=15,height = 10)
+ggsave(p2,file=figurename,width=16,height = 7)
 	 
 p <- ggdraw()+
 	draw_plot(p1+theme(axis.text.x=element_blank(),
